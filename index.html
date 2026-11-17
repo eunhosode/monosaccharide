@@ -1,0 +1,1362 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="오탄당과 육탄당의 알도스·케토스 구조, 입체배치와 디옥시 치환을 비교하는 도구입니다.">
+  <title>단당류 구조 탐구</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --page: #f7f6fa;
+      --paper: #fff;
+      --ink: #242033;
+      --muted: #655e74;
+      --border: #e6e1ef;
+      --accent: #6035c3;
+      --accent-strong: #4b24a9;
+      --accent-soft: #f0eaff;
+      --deoxy-soft: #f4effd;
+      --deoxy-border: #d7c7ef;
+      --mono: "IBM Plex Mono", "Cascadia Mono", Consolas, monospace;
+      --gutter: 28px;
+      font-family: Inter, "Malgun Gothic", "Apple SD Gothic Neo", system-ui, sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      background: var(--page);
+      color: var(--ink);
+      word-break: keep-all;
+      overflow-wrap: break-word;
+    }
+
+    button {
+      font: inherit;
+      color: inherit;
+    }
+
+    button:focus-visible, a:focus-visible {
+      outline: 3px solid #8659ee;
+      outline-offset: 3px;
+    }
+
+    .wrap {
+      width: min(1140px, calc(100% - var(--gutter) * 2));
+      margin-inline: auto;
+    }
+
+    .symbol-library, .visually-hidden {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+      white-space: nowrap;
+    }
+
+    .icon {
+      width: 18px;
+      height: 18px;
+      flex: none;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.65;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .topbar {
+      background: var(--paper);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .topbar-inner {
+      min-height: 65px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .brand, .formula {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -.025em;
+    }
+
+    .brand-mark {
+      display: grid;
+      width: 34px;
+      height: 34px;
+      place-items: center;
+      border-radius: 10px;
+      color: #fff;
+      background: var(--accent);
+    }
+
+    .brand-mark .icon { width: 22px; height: 22px; }
+
+    .formula {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .formula-value {
+      background: var(--accent-soft);
+      color: var(--accent-strong);
+      border-radius: 8px;
+      padding: 5px 10px;
+      font: 600 15px/1.3 var(--mono);
+      white-space: nowrap;
+    }
+
+    .formula-value sub { font-size: .72em; }
+
+    main { padding: 38px 0 24px; }
+
+    .intro {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 16px 22px;
+      margin-bottom: 26px;
+    }
+
+    h1, h2, p, figure { margin: 0; }
+
+    h1 {
+      font-size: clamp(33px, 4vw, 49px);
+      line-height: 1.15;
+      letter-spacing: -.065em;
+    }
+
+    .intro p {
+      margin-top: 12px;
+      color: var(--muted);
+      font-size: 15px;
+      line-height: 1.65;
+    }
+
+    .intro-controls {
+      display: flex;
+      flex: 0 1 354px;
+      gap: 8px;
+    }
+
+    .type-control, .count-control {
+      flex: 1 1 0;
+      min-width: 0;
+      padding: 10px 13px;
+      border: 1px solid var(--border);
+      border-radius: 13px;
+      background: var(--paper);
+    }
+
+    .count-heading, .count-range {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .count-heading { font-size: 13px; font-weight: 700; }
+    #sugar-family { color: var(--accent-strong); }
+
+    .type-switch {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 4px;
+      margin-top: 3px;
+    }
+
+    .type-switch button {
+      min-height: 28px;
+      padding: 0 3px;
+      border: 0;
+      border-radius: 6px;
+      background: #f3f0f8;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+
+    .type-switch button[aria-pressed="true"] {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .count-range {
+      margin-top: 3px;
+      color: var(--muted);
+      font: 600 13px/1 var(--mono);
+    }
+
+    .count-range input {
+      flex: 1 1 auto;
+      min-width: 0;
+      min-height: 28px;
+      margin: 0;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    .count-range input:focus-visible {
+      outline: 3px solid #8659ee;
+      outline-offset: 2px;
+      border-radius: 5px;
+    }
+
+    .workspace {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 342px;
+      gap: 20px;
+      align-items: start;
+    }
+
+    .panel {
+      background: var(--paper);
+      border: 1px solid var(--border);
+      border-radius: 21px;
+      box-shadow: 0 9px 26px -20px #38205655;
+    }
+
+    .structure { padding: 21px 16px 16px; }
+
+    .structure-header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      padding: 0 9px 18px;
+    }
+
+    .structure-header > :first-child {
+      flex: 1 1 190px;
+      min-width: 0;
+    }
+
+    .molecule-name {
+      --name-size: clamp(25px, 3.2vw, 35px);
+      font-size: var(--name-size);
+      letter-spacing: -.055em;
+      line-height: calc(var(--name-size) * 1.2);
+      overflow-wrap: anywhere;
+    }
+
+    .molecule-name.is-systematic {
+      font-size: clamp(17px, 2vw, 24px);
+      letter-spacing: -.03em;
+    }
+
+    .projection {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .form-switch {
+      display: flex;
+      flex: none;
+      max-width: 100%;
+      gap: 3px;
+      padding: 4px;
+      border: 1px solid #ebe6f3;
+      background: #f5f3f9;
+      border-radius: 12px;
+    }
+
+    .form-switch button, .reset {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      border: 0;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .form-switch button {
+      min-height: 37px;
+      padding: 0 clamp(4px, 1vw, 11px);
+      border-radius: 8px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .form-switch button[aria-pressed="false"]:hover:not(:disabled) { color: var(--accent-strong); }
+
+    .form-switch button[aria-pressed="true"] {
+      background: var(--accent);
+      color: #fff;
+      box-shadow: 0 2px 5px #4921ab32;
+    }
+
+    .form-switch button:disabled {
+      color: #8c8299;
+      cursor: not-allowed;
+    }
+
+    .drawing {
+      height: 383px;
+      display: flex;
+      justify-content: center;
+      border-radius: 14px;
+      border: 1px solid #e9e0f9;
+      background-color: #f6f1ff;
+      background-image:
+        radial-gradient(circle, #8a72b33d 0.7px, transparent 1px),
+        radial-gradient(ellipse at center, #ffffffc7, #ffffff00 74%);
+      background-size: 17px 17px, 100% 100%;
+      overflow: hidden;
+    }
+
+    .diagram {
+      display: block;
+      width: 100%;
+      height: 100%;
+      max-width: 570px;
+    }
+
+    .ring-face { fill: #fff8; }
+
+    .bond {
+      stroke: #312841;
+      stroke-width: 2.7;
+      stroke-linecap: round;
+    }
+
+    .bond-front { stroke-width: 5.8; }
+    .bond-side { stroke-width: 4.1; }
+    .branch-bond { stroke-width: 2.35; }
+
+    .group-label {
+      text-anchor: middle;
+      dominant-baseline: central;
+      fill: #332941;
+      font: 600 23px/1 Inter, "Segoe UI", sans-serif;
+    }
+
+    .hydrogen { fill: #5f556e; font-weight: 500; }
+    .hydroxyl, .hydroxymethyl { fill: var(--accent-strong); }
+    .ring-oxygen, .carbonyl-oxygen { fill: #a72955; font-weight: 700; }
+    .deoxy-atom { fill: var(--accent-strong); font-weight: 700; }
+    .attached-left { text-anchor: start; }
+
+    .carbon-tag rect {
+      fill: #fff;
+      stroke: #dcd0ee;
+      stroke-width: 1;
+    }
+
+    .carbon-tag text {
+      fill: #63527b;
+      text-anchor: middle;
+      dominant-baseline: central;
+      font: 600 13px/1 var(--mono);
+    }
+
+    .carbon-tag.is-highlighted rect { fill: var(--accent); stroke: var(--accent); }
+    .carbon-tag.is-highlighted text { fill: #fff; }
+    .branches.is-highlighted .bond { stroke: var(--accent); }
+    .carbon-tag.is-deoxy rect { fill: var(--deoxy-soft); stroke: var(--deoxy-border); }
+    .carbon-tag.is-deoxy text { fill: var(--accent-strong); }
+
+    .projection-note {
+      display: flex;
+      align-items: flex-start;
+      gap: 9px;
+      min-height: 35px;
+      padding: 13px 8px 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.55;
+    }
+
+    .projection-note .icon { color: var(--accent); margin-top: 1px; }
+
+    .inspector { padding: 17px 16px 16px; }
+
+    .inspector-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 0 2px 10px;
+    }
+
+    .inspector h2 {
+      font-size: 19px;
+      letter-spacing: -.045em;
+    }
+
+    .reset {
+      min-height: 34px;
+      padding: 0 7px;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .reset .icon { width: 15px; height: 15px; }
+    .reset:hover { background: var(--accent-soft); color: var(--accent-strong); }
+
+    .deoxy-control {
+      margin-bottom: 12px;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: #faf8fc;
+    }
+
+    .deoxy-heading {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 4px 8px;
+      margin-bottom: 8px;
+    }
+
+    .deoxy-heading h3 { margin: 0; font-size: 14px; }
+    .deoxy-heading p { color: var(--muted); font-size: 12px; }
+
+    .deoxy-options {
+      display: grid;
+      grid-auto-flow: column;
+      grid-auto-columns: minmax(0, 1fr);
+      gap: 5px;
+    }
+
+    .deoxy-options [hidden], .carbon-controls [hidden] { display: none; }
+
+    .deoxy-options button {
+      min-height: 36px;
+      padding: 0 3px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--paper);
+      color: var(--muted);
+      font: 600 13px/1 var(--mono);
+      cursor: pointer;
+    }
+
+    .deoxy-options button:hover:not(:disabled) { border-color: var(--deoxy-border); }
+
+    .deoxy-options button[aria-pressed="true"] {
+      border-color: var(--deoxy-border);
+      background: var(--deoxy-soft);
+      color: var(--accent-strong);
+      box-shadow: inset 0 -2px var(--deoxy-border);
+    }
+
+    .deoxy-options button:disabled {
+      background: #f0edf4;
+      color: #8c8299;
+      cursor: not-allowed;
+    }
+
+    .carbon-controls {
+      display: grid;
+      gap: 6px;
+    }
+
+    .carbon-button {
+      min-height: 56px;
+      width: 100%;
+      display: grid;
+      grid-template-columns: 36px minmax(0, 1fr) 28px;
+      align-items: center;
+      gap: 11px;
+      padding: 6px 11px;
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      background: var(--paper);
+      text-align: left;
+      cursor: pointer;
+    }
+
+    .carbon-button:hover:not(:disabled), .carbon-button.is-highlighted:not(:disabled) {
+      border-color: #c9b5ef;
+      background: #f7f2ff;
+    }
+
+    .carbon-button:active:not(:disabled) { background: var(--accent-soft); }
+
+    .carbon-number {
+      display: grid;
+      min-height: 32px;
+      place-items: center;
+      border-radius: 8px;
+      color: var(--accent-strong);
+      background: var(--accent-soft);
+      font: 600 14px/1 var(--mono);
+    }
+
+    .carbon-button.is-highlighted:not(:disabled) .carbon-number {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    .carbon-position {
+      display: block;
+      font-size: 14px;
+      font-weight: 700;
+      line-height: 1.3;
+    }
+
+    .carbon-detail {
+      display: block;
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.3;
+    }
+
+    .carbon-detail:empty { display: none; }
+
+    .carbon-button .icon { justify-self: center; color: var(--accent); }
+
+    .carbon-button:disabled {
+      background: #faf9fc;
+      border-color: #ebe7f0;
+      color: var(--muted);
+      cursor: default;
+    }
+
+    .carbon-button:disabled .carbon-number {
+      color: var(--muted);
+      background: #eeeaf4;
+    }
+
+    .carbon-button:disabled .icon { color: #756c85; }
+
+    .carbon-button.is-deoxy {
+      border-color: var(--deoxy-border);
+      background: #faf7ff;
+      color: var(--accent-strong);
+    }
+
+    .carbon-button.is-deoxy .carbon-number {
+      background: var(--deoxy-soft);
+      color: var(--accent-strong);
+    }
+
+    .control-note {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin-top: 12px;
+      padding: 11px 10px;
+      border-radius: 10px;
+      background: #f4effc;
+      color: #5d427e;
+      font-size: 12px;
+      line-height: 1.55;
+    }
+
+    .control-note .icon { width: 16px; height: 16px; margin-top: 1px; }
+
+    footer {
+      display: flex;
+      justify-content: flex-end;
+      padding-top: 14px;
+    }
+
+    .source {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+      text-decoration-thickness: 1px;
+      text-underline-offset: 3px;
+    }
+
+    .source:hover { color: var(--accent-strong); }
+    .source .icon { width: 13px; height: 13px; }
+
+    @media (max-width: 900px) {
+      .workspace { grid-template-columns: minmax(0, 1fr) 292px; gap: 14px; }
+      .structure-header { gap: 12px; }
+      .drawing { height: 352px; }
+    }
+
+    @media (max-width: 780px) {
+      .intro { flex-direction: column; align-items: stretch; }
+      .intro-controls { flex: auto; width: min(100%, 354px); }
+    }
+
+    @media (max-width: 700px) {
+      :root { --gutter: 16px; }
+      main { padding-top: 26px; }
+      .intro { margin-bottom: 18px; }
+      .workspace { grid-template-columns: minmax(0, 1fr); }
+    }
+
+    @media (max-width: 450px) {
+      .topbar-inner { min-height: 58px; }
+      .type-control, .count-control { padding-inline: 9px; }
+      .structure { padding: 14px 10px 11px; }
+      .structure-header { padding: 0 4px 11px; }
+      .form-switch { width: 100%; }
+      .form-switch button { flex: 1; gap: 4px; padding-inline: 4px; font-size: 12px; }
+      .form-switch .icon { width: 15px; height: 15px; }
+      .drawing { height: auto; aspect-ratio: 1.2; }
+      .inspector { padding: 13px 12px; }
+      .projection-note { padding-inline: 3px; }
+    }
+
+    @media (max-width: 340px) {
+      .form-switch .icon { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <svg class="symbol-library" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <symbol id="mark" viewBox="0 0 24 24"><path d="M12 3.2 19.6 7.6v8.8L12 20.8l-7.6-4.4V7.6z M12 3.2V1.8 M19.6 16.4l1.2.7 M4.4 16.4l-1.2.7"/></symbol>
+    <symbol id="pyranose-icon" viewBox="0 0 24 24"><path d="m12 3 7.8 4.5v9L12 21l-7.8-4.5v-9z"/></symbol>
+    <symbol id="furanose-icon" viewBox="0 0 24 24"><path d="m12 3 8.6 6.2-3.3 10.2H6.7L3.4 9.2z"/></symbol>
+    <symbol id="chain-icon" viewBox="0 0 24 24"><path d="m3.5 16 5.5-7 6 6 5.5-7"/><circle cx="3.5" cy="16" r="1"/><circle cx="20.5" cy="8" r="1"/></symbol>
+    <symbol id="swap-icon" viewBox="0 0 24 24"><path d="M8 18V5m-3 3 3-3 3 3m5-2v13m-3-3 3 3 3-3"/></symbol>
+    <symbol id="lock-icon" viewBox="0 0 24 24"><rect x="6" y="10" width="12" height="10" rx="2"/><path d="M9 10V7a3 3 0 0 1 6 0v3m-3 4v2"/></symbol>
+    <symbol id="reset-icon" viewBox="0 0 24 24"><path d="M4 11a8 8 0 1 1 2.2 6.4M4 5.5V11h5.5"/></symbol>
+    <symbol id="info-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11.5v4.75m0-8.5v.1"/></symbol>
+    <symbol id="link-icon" viewBox="0 0 24 24"><path d="M7 17 17 7m-8 0h8v8"/></symbol>
+  </svg>
+
+  <header class="topbar">
+    <div class="wrap topbar-inner">
+      <div class="brand">
+        <span class="brand-mark">
+          <svg class="icon" aria-hidden="true"><use href="#mark"></use></svg>
+        </span>
+        분자 실험실
+      </div>
+      <div class="formula">
+        <span>분자식</span>
+        <span class="formula-value" id="formula" aria-label="탄소 6개, 수소 12개, 산소 6개">C<sub id="formula-carbon">6</sub>H<sub id="formula-hydrogen">12</sub>O<sub id="oxygen-count">6</sub></span>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="intro">
+      <div>
+        <h1>단당류 구조 탐구</h1>
+        <p>오탄당과 육탄당의 알도스·케토스 구조와 탄소별 입체배치를 비교해 보세요.</p>
+      </div>
+      <div class="intro-controls">
+        <div class="type-control">
+          <div class="count-heading" id="type-heading">당 유형</div>
+          <div class="type-switch" role="group" aria-labelledby="type-heading">
+            <button type="button" data-type="aldose" aria-pressed="true">알도스</button>
+            <button type="button" data-type="ketose" aria-pressed="false">케토스</button>
+          </div>
+        </div>
+        <div class="count-control">
+          <div class="count-heading">
+            <label for="carbon-count">탄소 수</label>
+            <span id="sugar-family">육탄당</span>
+          </div>
+          <div class="count-range">
+            <span aria-hidden="true">5</span>
+            <input type="range" id="carbon-count" min="5" max="6" step="1" value="6" aria-valuetext="탄소 6개, 육탄당">
+            <span aria-hidden="true">6</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="workspace">
+      <section class="panel structure" aria-labelledby="molecule-name">
+        <div class="structure-header">
+          <div>
+            <h2 class="molecule-name" id="molecule-name">α-D-포도당</h2>
+            <p class="projection" id="projection">하워스 투영식 · 6원 고리</p>
+          </div>
+          <div class="form-switch" role="group" aria-label="구조 형태">
+            <button type="button" data-form="chain" aria-pressed="false">
+              <svg class="icon" aria-hidden="true"><use href="#chain-icon"></use></svg>
+              사슬형
+            </button>
+            <button type="button" data-form="furanose" aria-pressed="false">
+              <svg class="icon" aria-hidden="true"><use href="#furanose-icon"></use></svg>
+              푸라노스
+            </button>
+            <button type="button" data-form="pyranose" aria-pressed="true">
+              <svg class="icon" aria-hidden="true"><use href="#pyranose-icon"></use></svg>
+              피라노스
+            </button>
+          </div>
+        </div>
+        <figure>
+          <div class="drawing">
+            <svg class="diagram" id="diagram" viewBox="84 0 454 362" role="img"></svg>
+          </div>
+          <figcaption class="projection-note">
+            <svg class="icon" aria-hidden="true"><use id="projection-icon" href="#pyranose-icon"></use></svg>
+            <span id="projection-note"></span>
+          </figcaption>
+        </figure>
+        <noscript><p>구조를 바꾸려면 브라우저에서 JavaScript를 켜 주세요.</p></noscript>
+      </section>
+
+      <section class="panel inspector" aria-labelledby="control-heading">
+        <div class="inspector-header">
+          <h2 id="control-heading">탄소별 배치</h2>
+          <button type="button" class="reset" id="reset">
+            <svg class="icon" aria-hidden="true"><use href="#reset-icon"></use></svg>
+            초기화
+          </button>
+        </div>
+        <div class="deoxy-control">
+          <div class="deoxy-heading">
+            <h3 id="deoxy-heading">디옥시</h3>
+            <p id="deoxy-description">OH를 H로 바꾸기</p>
+          </div>
+          <div class="deoxy-options" role="group" aria-labelledby="deoxy-heading" aria-describedby="deoxy-description">
+            <button type="button" data-deoxy="1" aria-label="C1 디옥시" aria-pressed="false" disabled hidden>C1</button>
+            <button type="button" data-deoxy="2" aria-label="C2 디옥시" aria-pressed="false">C2</button>
+            <button type="button" data-deoxy="3" aria-label="C3 디옥시" aria-pressed="false">C3</button>
+            <button type="button" data-deoxy="4" aria-label="C4 디옥시" aria-pressed="false">C4</button>
+            <button type="button" data-deoxy="5" aria-label="C5 디옥시" aria-pressed="false" disabled>C5</button>
+            <button type="button" data-deoxy="6" aria-label="C6 디옥시" aria-pressed="false">C6</button>
+          </div>
+        </div>
+        <div class="carbon-controls" id="carbon-controls"></div>
+        <div class="control-note">
+          <svg class="icon" aria-hidden="true"><use href="#info-icon"></use></svg>
+          <p id="control-note"></p>
+        </div>
+      </section>
+    </div>
+
+    <footer>
+      <a class="source" href="https://iupac.qmul.ac.uk/BlueBook/P10.html" target="_blank" rel="noopener noreferrer">
+        IUPAC 투영식·명명 기준
+        <svg class="icon" aria-hidden="true"><use href="#link-icon"></use></svg>
+      </a>
+    </footer>
+    <p class="visually-hidden" id="announcement" role="status" aria-atomic="true"></p>
+  </main>
+
+  <script>
+    const sugarTypes = {
+      aldose: { label: "알도스", carbonyl: 1 },
+      ketose: { label: "케토스", carbonyl: 2 },
+    };
+
+    // Name keys give the Fischer directions above the last stereocenter of each D sugar.
+    const sugarFamilies = {
+      5: {
+        label: "오탄당",
+        stem: "pent",
+        alkanal: "펜탄알",
+        alkanone: "펜탄-2-온",
+        aldose: {
+          initialForm: "furanose",
+          initialOhRight: { 2: true, 3: true, 4: true },
+          names: { RR: "리보스", LR: "아라비노스", RL: "자일로스", LL: "릭소스" },
+          deoxyAt2: { RR: "리보스" },
+        },
+        ketose: {
+          initialForm: "furanose",
+          initialOhRight: { 3: true, 4: true },
+          names: { R: "리불로스", L: "자일룰로스" },
+        },
+      },
+      6: {
+        label: "육탄당",
+        stem: "hex",
+        alkanal: "헥산알",
+        alkanone: "헥산-2-온",
+        aldose: {
+          initialForm: "pyranose",
+          initialOhRight: { 2: true, 3: false, 4: true, 5: true },
+          names: {
+            RRR: "알로스",
+            LRR: "알트로스",
+            RLR: "포도당",
+            LLR: "만노스",
+            RRL: "굴로스",
+            LRL: "이도스",
+            RLL: "갈락토스",
+            LLL: "탈로스",
+          },
+          terminalDeoxyNames: { RLR: "퀴노보스", LLR: "람노스", RLL: "푸코스" },
+          deoxyAt2: { LRR: "포도당" },
+        },
+        ketose: {
+          initialForm: "furanose",
+          initialOhRight: { 3: false, 4: true, 5: true },
+          names: { RR: "알룰로스", LR: "과당", RL: "소르보스", LL: "타가토스" },
+        },
+      },
+    };
+
+    // With missing OH groups, name the remaining Fischer stereocenters in order.
+    const deoxyConfigurations = {
+      R: "glycero",
+      RR: "erythro",
+      LR: "threo",
+      RRR: "ribo",
+      LRR: "arabino",
+      RLR: "xylo",
+      LLR: "lyxo",
+    };
+    const deoxyPrefixes = ["", "deoxy", "dideoxy", "trideoxy", "tetradeoxy"];
+
+    const forms = {
+      chain: {
+        label: "사슬형",
+        projection: "피셔 투영식 · 열린 사슬",
+        icon: "#chain-icon",
+        suffix: "ose",
+        ringSize: 0,
+        draw: fischer,
+      },
+      furanose: {
+        label: "푸라노스",
+        projection: "하워스 투영식 · 5원 고리",
+        icon: "#furanose-icon",
+        suffix: "ofuranose",
+        ringSize: 5,
+        draw: furanose,
+      },
+      pyranose: {
+        label: "피라노스",
+        projection: "하워스 투영식 · 6원 고리",
+        icon: "#pyranose-icon",
+        suffix: "opyranose",
+        ringSize: 6,
+        draw: pyranose,
+      },
+    };
+
+    function initialState(carbonCount, type) {
+      const family = sugarFamilies[carbonCount][type];
+      return {
+        carbonCount,
+        type,
+        carbonyl: sugarTypes[type].carbonyl,
+        form: family.initialForm,
+        ohRight: { ...family.initialOhRight },
+        anomericOhUp: type === "ketose",
+        deoxy: new Set(),
+      };
+    }
+
+    const states = {
+      5: { aldose: initialState(5, "aldose"), ketose: initialState(5, "ketose") },
+      6: { aldose: initialState(6, "aldose"), ketose: initialState(6, "ketose") },
+    };
+    let state = states[6].aldose;
+    let selectedCarbon = 1;
+    let hoveredCarbon = null;
+
+    const nameHeading = document.getElementById("molecule-name");
+    const countSlider = document.getElementById("carbon-count");
+    const familyLabel = document.getElementById("sugar-family");
+    const formula = document.getElementById("formula");
+    const formulaCarbon = document.getElementById("formula-carbon");
+    const formulaHydrogen = document.getElementById("formula-hydrogen");
+    const oxygenCount = document.getElementById("oxygen-count");
+    const projection = document.getElementById("projection");
+    const projectionIcon = document.getElementById("projection-icon");
+    const projectionNote = document.getElementById("projection-note");
+    const controlNote = document.getElementById("control-note");
+    const diagram = document.getElementById("diagram");
+    const controls = document.getElementById("carbon-controls");
+    const typeButtons = document.querySelectorAll("[data-type]");
+    const formButtons = document.querySelectorAll("[data-form]");
+    const deoxyButtons = document.querySelectorAll("[data-deoxy]");
+    const announcement = document.getElementById("announcement");
+
+    function interiorCarbons() {
+      return Array.from({ length: state.carbonCount - state.carbonyl - 1 }, (_, index) => index + state.carbonyl + 1);
+    }
+
+    function ringClosingCarbon(form = forms[state.form]) {
+      return form.ringSize ? state.carbonyl + form.ringSize - 2 : 0;
+    }
+
+    function nameWithoutReference(family) {
+      if (state.type === "aldose") {
+        if (state.form === "pyranose") {
+          // The sole stereocenter of oxan-2-ol is R when OH points up in this projection.
+          return (state.anomericOhUp ? "(R)" : "(S)") + "-옥산-2-올";
+        }
+        return state.deoxy.has(state.carbonCount)
+          ? family.alkanal
+          : state.carbonCount + "-하이드록시" + family.alkanal;
+      }
+      const hasC1OH = !state.deoxy.has(1);
+      if (state.form !== "chain") {
+        // Here C3 is CH₂. C1 outranks it only when C1 retains its OH.
+        const descriptor = state.anomericOhUp !== hasC1OH ? "R" : "S";
+        const substituent = hasC1OH ? "(하이드록시메틸)" : "메틸";
+        const ring = state.form === "furanose" ? "옥솔란" : "옥산";
+        return "(2" + descriptor + ")-2-" + substituent + ring + "-2-올";
+      }
+      const hydroxyls = [1, state.carbonCount].filter(carbon => !state.deoxy.has(carbon));
+      if (hydroxyls.length === 0) return family.alkanone;
+      return hydroxyls.join(",") + "-" + (hydroxyls.length === 2 ? "다이하이드록시" : "하이드록시") + family.alkanone;
+    }
+
+    function referenceCarbon() {
+      return interiorCarbons().reverse().find(carbon => !state.deoxy.has(carbon));
+    }
+
+    function moleculeName() {
+      const family = sugarFamilies[state.carbonCount];
+      const reference = referenceCarbon();
+      if (reference === undefined) return nameWithoutReference(family);
+
+      const sugar = family[state.type];
+      const isD = state.ohRight[reference];
+      const series = isD ? "D" : "L";
+      const stereo = state.form === "chain" ? series : anomer() + "-" + series;
+      const locations = [...state.deoxy].sort((a, b) => a - b);
+      const interior = interiorCarbons();
+      const remaining = interior.filter(carbon => !state.deoxy.has(carbon));
+      // Reflect the L configurations to look up their D counterparts.
+      const pattern = remaining.map(carbon => state.ohRight[carbon] === isD ? "R" : "L").join("");
+
+      if (remaining.length === interior.length) {
+        const key = pattern.slice(0, -1);
+        const base = stereo + "-" + sugar.names[key];
+        if (locations.length === 0) return base;
+        if (locations.length === 1) {
+          const common = sugar.terminalDeoxyNames?.[key];
+          return common ? stereo + "-" + common : locations[0] + "-디옥시-" + base;
+        }
+      }
+
+      const commonAt2 = sugar.deoxyAt2?.[pattern];
+      if (locations.length === 1 && locations[0] === 2 && isD && commonAt2) {
+        return "2-디옥시-" + stereo + "-" + commonAt2;
+      }
+      return [
+        locations.join(","), deoxyPrefixes[locations.length], stereo, deoxyConfigurations[pattern],
+        family.stem + (state.type === "ketose" ? "-2-ul" : "") + forms[state.form].suffix,
+      ].join("-");
+    }
+
+    function anomer() {
+      // In both clockwise Haworth drawings, the α-OH points down for D sugars.
+      return state.anomericOhUp === state.ohRight[referenceCarbon()] ? "β" : "α";
+    }
+
+    function ringSubstituentUp(carbon) {
+      if (carbon === state.carbonyl) return state.anomericOhUp;
+      // In this orientation a right-hand ring-closing OH leaves the remaining chain pointing up.
+      if (carbon === ringClosingCarbon()) return state.ohRight[carbon];
+      return !state.ohRight[carbon];
+    }
+
+    function furanoseOhRight() {
+      // A Fischer fragment with C6 above C5 is the usual fragment rotated by 180°.
+      return state.ohRight[5] !== ringSubstituentUp(4);
+    }
+
+    function terminalGroup(carbon = state.carbonCount) {
+      return state.deoxy.has(carbon) ? "CH₃" : "CH₂OH";
+    }
+
+    function terminalStyle(carbon = state.carbonCount) {
+      return state.deoxy.has(carbon) ? "deoxy-atom attached-left" : "hydroxymethyl attached-left";
+    }
+
+    function carbonPosition(carbon) {
+      const ringEnd = ringClosingCarbon();
+      if (carbon === state.carbonCount || (state.type === "ketose" && carbon === 1)) {
+        if (carbon === ringEnd) {
+          return { label: "H 두 개", detail: "고리 형성 탄소 · CH₂", disabled: true };
+        }
+        const detail = state.deoxy.has(carbon) ? "디옥시 · 메틸기" : "말단 탄소 · H 두 개";
+        return { label: terminalGroup(carbon), detail, disabled: true };
+      }
+      if (state.deoxy.has(carbon)) {
+        return { label: "H 두 개", detail: "디옥시 · CH₂", disabled: true };
+      }
+      if (state.form === "chain" && carbon === state.carbonyl) {
+        return state.type === "ketose"
+          ? { label: "C=O", detail: "케톤 탄소", disabled: true }
+          : { label: "CHO", detail: "알데하이드 탄소", disabled: true };
+      }
+
+      const closesRing = carbon === ringEnd;
+      const inFuranoseSideChain = state.form === "furanose" && state.type === "aldose" && carbon === 5;
+      const group = closesRing
+        ? (state.carbonCount - ringEnd === 1 ? terminalGroup() : "C5–C6 곁사슬")
+        : "OH";
+      const direction = carbon <= ringEnd
+        ? (ringSubstituentUp(carbon) ? "위" : "아래")
+        : ((inFuranoseSideChain ? furanoseOhRight() : state.ohRight[carbon]) ? "오른쪽" : "왼쪽");
+
+      let detail = "";
+      if (carbon === state.carbonyl) detail = "아노머 탄소";
+      if (closesRing) detail = "고리 형성 탄소";
+      if (inFuranoseSideChain) detail = "고리 밖";
+      if (carbon === referenceCarbon()) detail = detail ? detail + " · D/L 기준" : "D/L 배치 기준";
+      const partner = state.type === "ketose" && carbon === state.carbonyl ? terminalGroup(1) : "H";
+      return { label: group + " " + direction, group, partner, detail, disabled: false };
+    }
+
+    function bond(x1, y1, x2, y2, style = "") {
+      return '<line class="bond ' + style + '" x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '"/>';
+    }
+
+    function groupLabel(x, y, label, style = "") {
+      return '<text class="group-label ' + style + '" x="' + x + '" y="' + y + '">' + label + '</text>';
+    }
+
+    function carbonTag(carbon, x, y) {
+      const style = state.deoxy.has(carbon) ? "carbon-tag is-deoxy" : "carbon-tag";
+      return '<g class="' + style + '" data-carbon="' + carbon + '" transform="translate(' + x + ' ' + y + ')">' +
+        '<rect x="-16" y="-11" width="32" height="22" rx="7"/><text x="0" y="0">C' + carbon + '</text></g>';
+    }
+
+    function haworthBranches(carbon, x, y, group = "OH", downDistance = 58) {
+      const deoxy = state.deoxy.has(carbon);
+      const up = !deoxy && group !== "H" && ringSubstituentUp(carbon);
+      const upY = y - 58;
+      const downY = y + downDistance;
+      const attachedC1 = state.type === "ketose" && carbon === state.carbonyl;
+      const hydrogenStyle = deoxy ? "hydrogen deoxy-atom" : "hydrogen";
+      const main = deoxy ? "H" : group;
+      const other = attachedC1 ? terminalGroup(1) : "H";
+      const groupStyle = main === "H" ? hydrogenStyle : (main === "OH" ? "hydroxyl attached-left" : terminalStyle());
+      const otherStyle = attachedC1 ? terminalStyle(1) : hydrogenStyle;
+      const upLabel = up ? main : other;
+      const downLabel = up ? other : main;
+      const branches = '<g class="branches" data-carbon="' + carbon + '">' +
+        bond(x, upY + 15, x, downY - 15, "branch-bond") +
+        groupLabel(upLabel === "H" ? x : x - 8, upY, upLabel, up ? groupStyle : otherStyle) +
+        groupLabel(downLabel === "H" ? x : x - 8, downY, downLabel, up ? otherStyle : groupStyle) + '</g>';
+      return branches + (attachedC1 ? carbonTag(1, x + 30, up ? downY + 26 : upY - 26) : "");
+    }
+
+    function pyranose() {
+      const carbons = [
+        { x: 476, y: 167, tagX: 510, tagY: 173 },
+        { x: 398, y: 244, tagX: 435, tagY: 251 },
+        { x: 226, y: 244, tagX: 189, tagY: 251 },
+        { x: 148, y: 167, tagX: 112, tagY: 173 },
+      ];
+
+      const ring = '<polygon class="ring-face" points="148,167 226,104 398,104 476,167 398,244 226,244"/>' +
+        bond(148, 167, 226, 104) + bond(226, 104, 383, 104) + bond(411, 115, 476, 167) +
+        bond(476, 167, 398, 244, "bond-side") + bond(398, 244, 226, 244, "bond-front") +
+        bond(226, 244, 148, 167, "bond-side") + groupLabel(398, 104, "O", "ring-oxygen");
+
+      const substituents = carbons.map(({ x, y, tagX, tagY }, index) => {
+        const number = state.carbonyl + index;
+        return haworthBranches(number, x, y) + carbonTag(number, tagX, tagY);
+      }).join("");
+      const ringEnd = ringClosingCarbon();
+      const terminalInRing = ringEnd === state.carbonCount;
+      const closingBranches = haworthBranches(ringEnd, 226, 104, terminalInRing ? "H" : terminalGroup(), 48) +
+        carbonTag(ringEnd, 192, 89);
+      const terminalTag = terminalInRing ? "" : carbonTag(state.carbonCount,
+        state.deoxy.has(state.carbonCount) ? 284 : 316, ringSubstituentUp(ringEnd) ? 46 : 152);
+
+      return ring + substituents + closingBranches + terminalTag;
+    }
+
+    function furanose() {
+      const sideX = 174;
+      const sideY = 151;
+      const ringStart = state.carbonyl;
+      const ringEnd = ringClosingCarbon();
+      const sideLength = state.carbonCount - ringEnd;
+      const sideUp = sideLength > 0 && ringSubstituentUp(ringEnd);
+
+      const ring = '<polygon class="ring-face" points="174,151 326,88 474,151 413,233 262,233"/>' +
+        bond(sideX, sideY, 310, 95) + bond(342, 95, 474, 151) +
+        bond(474, 151, 413, 233, "bond-side") + bond(413, 233, 262, 233, "bond-front") +
+        bond(262, 233, sideX, sideY, "bond-side") + groupLabel(326, 88, "O", "ring-oxygen");
+
+      const substituents = haworthBranches(ringStart, 474, 151) + carbonTag(ringStart, 508, 157) +
+        haworthBranches(ringStart + 1, 413, 233) + carbonTag(ringStart + 1, 450, 243) +
+        haworthBranches(ringStart + 2, 262, 233) + carbonTag(ringStart + 2, 298, 251) + carbonTag(ringEnd, 138, 157);
+
+      if (sideLength === 0) return ring + substituents + haworthBranches(ringEnd, sideX, sideY, "H", 54);
+      if (sideLength === 1) {
+        const downDistance = sideUp ? 54 : 95;
+        const terminalY = sideUp ? sideY - 58 : sideY + downDistance;
+        return ring + substituents + haworthBranches(ringEnd, sideX, sideY, terminalGroup(), downDistance) +
+          carbonTag(state.carbonCount, 135, terminalY);
+      }
+
+      const c5Y = sideUp ? 80 : 246;
+      const c6Y = sideUp ? 25 : 330;
+      const hY = sideY + (sideUp ? 54 : -54);
+      const c4Branches = '<g class="branches" data-carbon="4">' +
+        bond(sideX, c5Y, sideX, hY + (sideUp ? -15 : 15), "branch-bond") +
+        groupLabel(sideX, hY, "H", "hydrogen") + '</g>';
+
+      const sideChain = bond(sideX, c5Y, sideX, c6Y + (sideUp ? 16 : -16)) +
+        fischerBranches(5, sideX, c5Y, furanoseOhRight(), 36) + carbonTag(5, 113, c5Y - 27) +
+        groupLabel(sideX - 8, c6Y, terminalGroup(), terminalStyle()) +
+        carbonTag(6, state.deoxy.has(6) ? 232 : 266, c6Y);
+
+      return ring + substituents + c4Branches + sideChain;
+    }
+
+    function fischerBranches(carbon, x, y, right, reach = 62) {
+      const deoxy = state.deoxy.has(carbon);
+      const hydrogenStyle = deoxy ? "hydrogen deoxy-atom" : "hydrogen";
+      const leftLabel = right || deoxy ? "H" : "HO";
+      const rightLabel = !right || deoxy ? "H" : "OH";
+      return '<g class="branches" data-carbon="' + carbon + '">' +
+        bond(x - reach, y, x + reach, y, "branch-bond") +
+        groupLabel(x - reach - 25, y, leftLabel, leftLabel === "H" ? hydrogenStyle : "hydroxyl") +
+        groupLabel(x + reach + 25, y, rightLabel, rightLabel === "H" ? hydrogenStyle : "hydroxyl") + '</g>';
+    }
+
+    function fischer() {
+      const centerX = 310;
+      const tagX = 164;
+      const startY = 30;
+      const endY = 333;
+      const step = (endY - startY) / (state.carbonCount - 1);
+      const ketose = state.type === "ketose";
+      const backbone = bond(centerX, startY + 16, centerX, endY - 16) +
+        groupLabel(centerX - 8, startY, ketose ? terminalGroup(1) : "CHO", ketose ? terminalStyle(1) : "attached-left") +
+        carbonTag(1, tagX, startY) +
+        groupLabel(centerX - 8, endY, terminalGroup(), terminalStyle()) + carbonTag(state.carbonCount, tagX, endY);
+
+      const carbonylY = Math.round(startY + step);
+      const carbonyl = ketose
+        ? bond(centerX, carbonylY - 3, centerX + 51, carbonylY - 3) +
+          bond(centerX, carbonylY + 3, centerX + 51, carbonylY + 3) +
+          groupLabel(centerX + 75, carbonylY, "O", "carbonyl-oxygen") + carbonTag(2, tagX, carbonylY)
+        : "";
+      const substituents = interiorCarbons().map(carbon => {
+        const y = Math.round(startY + (carbon - 1) * step);
+        return fischerBranches(carbon, centerX, y, state.ohRight[carbon]) + carbonTag(carbon, tagX, y);
+      }).join("");
+      return backbone + carbonyl + substituents;
+    }
+
+    const carbonButtons = Array.from({ length: 6 }, (_, index) => {
+      const carbon = index + 1;
+      const button = document.createElement("button");
+      button.className = "carbon-button";
+      button.type = "button";
+      button.dataset.carbon = carbon;
+      button.innerHTML = '<span class="carbon-number">C' + carbon + '</span>' +
+        '<span><span class="carbon-position"></span><span class="carbon-detail"></span></span>' +
+        '<svg class="icon" aria-hidden="true"><use href="#swap-icon"></use></svg>';
+
+      button.addEventListener("click", () => flip(carbon));
+      button.addEventListener("pointerenter", event => {
+        if (button.disabled || event.pointerType === "touch") return;
+        hoveredCarbon = carbon;
+        highlightCarbon();
+      });
+      button.addEventListener("pointerleave", () => {
+        if (hoveredCarbon !== carbon) return;
+        hoveredCarbon = null;
+        highlightCarbon();
+      });
+      controls.append(button);
+      return button;
+    });
+
+    function highlightCarbon() {
+      const activeCarbon = hoveredCarbon ?? selectedCarbon;
+      for (const element of document.querySelectorAll("[data-carbon]")) {
+        element.classList.toggle("is-highlighted", Number(element.dataset.carbon) === activeCarbon);
+      }
+    }
+
+    function flip(carbon) {
+      if (carbon > state.carbonCount || carbonPosition(carbon).disabled) return;
+
+      if (carbon === state.carbonyl) {
+        state.anomericOhUp = !state.anomericOhUp;
+      } else {
+        state.ohRight[carbon] = !state.ohRight[carbon];
+      }
+
+      selectedCarbon = carbon;
+      render("C" + carbon + " " + carbonPosition(carbon).label);
+    }
+
+    function updateStructureNotes() {
+      const reference = referenceCarbon();
+      const anomericLabel = "C" + state.carbonyl;
+      if (state.form === "chain") {
+        projectionNote.textContent = "피셔 투영식의 가로 결합은 관찰자 쪽을, 세로 결합은 뒤쪽을 향합니다.";
+        controlNote.textContent = state.type === "ketose"
+          ? "C2에는 케톤기(C=O)가 있습니다."
+          : "C1에는 알데하이드기(CHO)가 있습니다.";
+        if (reference !== undefined) {
+          controlNote.textContent = "C" + reference + "의 OH가 오른쪽이면 D형, 왼쪽이면 L형입니다. " + controlNote.textContent;
+        }
+        return;
+      }
+
+      const ringEnd = ringClosingCarbon();
+      const ringFormation = "C" + ringEnd + "의 OH가 고리 산소가 됩니다. ";
+      if (state.carbonCount - ringEnd === 2) {
+        projectionNote.textContent = "고리 밖 C5는 곁사슬 방향에 맞춘 피셔 투영식입니다. C1과 C" + reference +
+          "의 배치로 α형과 β형을 구분합니다.";
+        controlNote.textContent = ringFormation + "C4 버튼은 H와 C5–C6 곁사슬을 맞바꿉니다.";
+        return;
+      }
+
+      const terminalInRing = ringEnd === state.carbonCount;
+      controlNote.textContent = ringFormation + (terminalInRing
+        ? "고리의 C" + ringEnd + "에는 H가 두 개 붙습니다."
+        : "C" + ringEnd + " 버튼은 H와 " + terminalGroup() + "를 맞바꿉니다.");
+      if (reference === undefined) {
+        projectionNote.textContent = anomericLabel + "의 OH 방향으로 R형과 S형을 구분합니다.";
+      } else {
+        const kind = anomer();
+        const sameSide = (kind === "α") === terminalInRing;
+        const comparison = terminalInRing ? "C" + reference + "의 OH" : "C" + ringEnd + "에 붙은 " + terminalGroup();
+        projectionNote.textContent = anomericLabel + "의 OH와 " + comparison + "가 " +
+          (sameSide ? "같은 쪽" : "서로 반대쪽") + "을 향해 " + kind + "형입니다.";
+      }
+    }
+
+    function render(status) {
+      const { carbonCount, carbonyl, type } = state;
+      const family = sugarFamilies[carbonCount];
+      const form = forms[state.form];
+      const name = moleculeName();
+      const hydrogen = 2 * carbonCount;
+      const oxygen = carbonCount - state.deoxy.size;
+      nameHeading.textContent = name;
+      nameHeading.classList.toggle("is-systematic", name.includes("deoxy-"));
+      countSlider.value = String(carbonCount);
+      countSlider.setAttribute("aria-valuetext", "탄소 " + carbonCount + "개, " + family.label);
+      familyLabel.textContent = family.label;
+      formulaCarbon.textContent = String(carbonCount);
+      formulaHydrogen.textContent = String(hydrogen);
+      oxygenCount.textContent = oxygen === 1 ? "" : String(oxygen);
+      formula.setAttribute("aria-label", "탄소 " + carbonCount + "개, 수소 " + hydrogen + "개, 산소 " + oxygen + "개");
+      projection.textContent = form.projection;
+      projectionIcon.setAttribute("href", form.icon);
+      for (const button of typeButtons) {
+        button.setAttribute("aria-pressed", button.dataset.type === type);
+      }
+      for (const button of formButtons) {
+        const closure = ringClosingCarbon(forms[button.dataset.form]);
+        button.disabled = closure > carbonCount || state.deoxy.has(closure);
+        button.setAttribute("aria-pressed", button.dataset.form === state.form);
+      }
+      const ringEnd = ringClosingCarbon(form);
+      for (const button of deoxyButtons) {
+        const carbon = Number(button.dataset.deoxy);
+        button.hidden = carbon > carbonCount || carbon === carbonyl;
+        button.disabled = button.hidden || carbon === ringEnd;
+        button.setAttribute("aria-pressed", state.deoxy.has(carbon));
+      }
+
+      const diagramDescription = carbonButtons.slice(0, carbonCount).map((_, index) => {
+        const carbon = index + 1;
+        return "C" + carbon + " " + carbonPosition(carbon).label;
+      }).join(", ");
+      diagram.setAttribute("viewBox", type === "ketose" && form.ringSize ? "84 0 492 362" : "84 0 454 362");
+      diagram.setAttribute("aria-label", name + " " + form.label + ", " + form.projection + ". " + diagramDescription);
+      diagram.innerHTML = form.draw();
+
+      updateStructureNotes();
+
+      carbonButtons.forEach((button, index) => {
+        const carbon = index + 1;
+        button.hidden = carbon > carbonCount;
+        if (button.hidden) {
+          button.disabled = true;
+          return;
+        }
+        const { label, group, partner, detail, disabled } = carbonPosition(carbon);
+        button.disabled = disabled;
+        button.classList.toggle("is-deoxy", state.deoxy.has(carbon));
+        button.querySelector(".carbon-position").textContent = label;
+        button.querySelector(".carbon-detail").textContent = detail;
+        button.querySelector("use").setAttribute("href", disabled ? "#lock-icon" : "#swap-icon");
+        button.setAttribute("aria-label", "C" + carbon + ", " + label +
+          (disabled ? ", " + detail : ", " + partner + "와 " + group + " 위치 바꾸기"));
+      });
+      highlightCarbon();
+
+      if (status) announcement.textContent = status + ". " + name;
+    }
+
+    function selectSugar(carbonCount, type) {
+      const nextState = states[carbonCount]?.[type];
+      if (!nextState || nextState === state) return;
+      const status = carbonCount === state.carbonCount ? sugarTypes[type].label : sugarFamilies[carbonCount].label;
+      state = nextState;
+      selectedCarbon = state.form === "chain" ? null : state.carbonyl;
+      hoveredCarbon = null;
+      render(status);
+    }
+
+    countSlider.addEventListener("input", () => selectSugar(Number(countSlider.value), state.type));
+    typeButtons.forEach(button => {
+      button.addEventListener("click", () => selectSugar(state.carbonCount, button.dataset.type));
+    });
+
+    formButtons.forEach(button => {
+      button.addEventListener("click", () => {
+        if (button.disabled || state.form === button.dataset.form) return;
+        // Keep all Fischer configurations and the C1 OH direction when switching views.
+        state.form = button.dataset.form;
+        hoveredCarbon = null;
+        if (state.form === "chain" && selectedCarbon === state.carbonyl) selectedCarbon = null;
+        render(forms[state.form].label);
+      });
+    });
+
+    deoxyButtons.forEach(button => {
+      button.addEventListener("click", () => {
+        if (button.disabled) return;
+        const carbon = Number(button.dataset.deoxy);
+        const restoring = state.deoxy.delete(carbon);
+        if (!restoring) state.deoxy.add(carbon);
+
+        selectedCarbon = carbon;
+        hoveredCarbon = null;
+
+        const change = restoring ? "의 OH를 복원했습니다" : "의 OH를 H로 바꿨습니다";
+        render("C" + carbon + change);
+      });
+    });
+
+    document.getElementById("reset").addEventListener("click", () => {
+      const { carbonCount, type } = state;
+      state = initialState(carbonCount, type);
+      states[carbonCount][type] = state;
+      selectedCarbon = state.carbonyl;
+      hoveredCarbon = null;
+      render("처음 상태로 돌아갔습니다");
+    });
+
+    render();
+  </script>
+</body>
+</html>
